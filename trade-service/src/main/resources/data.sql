@@ -1,0 +1,1 @@
+insert into trade values (10192,  'AL',  'Bloomberg', 'EUR', 1002.9, 1000,  'BUY', sysdate , 'processed');
