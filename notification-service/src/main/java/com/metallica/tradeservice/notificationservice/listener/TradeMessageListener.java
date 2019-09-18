@@ -1,20 +1,17 @@
 package com.metallica.tradeservice.notificationservice.listener;
 
-////import com.metallica.tradeservice.notificationservice.client.TradeServiceClient;
-//import com.metallica.tradeservice.notificationservice.client.TradeServiceClient;
 import com.metallica.tradeservice.notificationservice.client.TradeServiceClient;
 import com.metallica.tradeservice.notificationservice.model.TradeStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.amqp.core.Message;
-import org.springframework.amqp.core.MessageListener;
+import org.springframework.amqp.rabbit.annotation.EnableRabbit;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
-import org.springframework.amqp.rabbit.listener.MessageListenerContainer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.io.Serializable;
 
+@EnableRabbit
 @Component
 public
 class TradeMessageListener implements Serializable {
@@ -35,4 +32,14 @@ class TradeMessageListener implements Serializable {
         req.setTradeStatus ( trade.getTradeStatus () );
         tradeServiceClient.updateTrade(req);
     }
+//
+//    @RabbitListener(queues="${rabbitmq.queue-name}")
+//    public void receivedMessage(TradeStatus message) {
+//        loggerFactory.info ("******************Received trade is: {}", message);
+//    }
+
+//    @RabbitListener(queues="${rabbitmq.queue-name}")
+//    public void receivedMessage(TradeStatus msg) {
+//        System.out.println("Received Message: " + msg);
+//    }
 }

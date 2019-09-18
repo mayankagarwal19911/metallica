@@ -3,7 +3,7 @@ package com.metallica.tradeservice.notificationservice.model;
 import java.io.Serializable;
 
 public
-class TradeStatus implements Serializable {
+class TradeStatus {
 
 
     Long id;
@@ -37,5 +37,14 @@ class TradeStatus implements Serializable {
     public
     void setTradeStatus (String tradeStatus) {
         this.tradeStatus = tradeStatus;
+    }
+
+    @Override
+    public
+    String toString ( ) {
+        return "TradeStatus{" +
+                "id=" + id +
+                ", tradeStatus='" + tradeStatus + '\'' +
+                '}';
     }
 }
