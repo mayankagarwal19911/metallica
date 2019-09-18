@@ -1,47 +1,71 @@
 package com.metallica.tradeservice.rabbitmq;
 
-import org.springframework.amqp.core.Binding;
-import org.springframework.amqp.core.BindingBuilder;
-import org.springframework.amqp.core.Queue;
-import org.springframework.amqp.core.TopicExchange;
+import org.springframework.amqp.core.*;
+import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
+import org.springframework.amqp.rabbit.connection.CachingConnectionFactory;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
+import org.springframework.amqp.rabbit.core.RabbitAdmin;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
-import org.springframework.amqp.rabbit.listener.SimpleMessageListenerContainer;
-import org.springframework.amqp.rabbit.listener.adapter.MessageListenerAdapter;
-import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class RabbitMQConfig {
 
+    @Value("${rabbitmq.exchange-name}")
+    private String exchange;
+
+    @Value("${rabbitmq.routing-key}")
+    private String routingKey;
+
+    @Value("${rabbitmq.queue-name}")
+    private String queueName;
+
     @Bean
-    Queue queue() {
-        return new Queue("${rabbitmq.queue-name}", false);
+    public ConnectionFactory connectionFactory() {
+        CachingConnectionFactory connectionFactory = new CachingConnectionFactory("localhost");
+        return connectionFactory;
     }
 
     @Bean
-    TopicExchange exchange() {
-        return new TopicExchange("${rabbitmq.exchange-name}");
+    public AmqpAdmin amqpAdmin() {
+        return new RabbitAdmin (connectionFactory());
     }
 
     @Bean
-    Binding binding(Queue queue, TopicExchange exchange) {
-        return BindingBuilder.bind(queue).to(exchange).with("${rabbitmq.routing-key}");
+    public RabbitTemplate rabbitTemplate() {
+        return new RabbitTemplate(connectionFactory());
+    }
+
+    @Bean
+    public Queue myQueue() {
+        return QueueBuilder.durable (queueName)
+            .autoDelete ()
+            .exclusive ()
+            .build ();
+    }
+
+    @Bean
+    Exchange exchange() {
+        return ExchangeBuilder.directExchange ( exchange )
+                .durable ( true )
+                .autoDelete ()
+                .internal ()
+                .build ();
+    }
+
+    @Bean
+    Binding binding(Queue queue, DirectExchange exchange) {
+        return BindingBuilder.bind(queue).to(exchange).with(routingKey);
     }
 
     @Bean
     public
-    RabbitTemplate rabbitTemplate(final ConnectionFactory connectionFactory) {
-        final RabbitTemplate rabbitTemplate = new RabbitTemplate(connectionFactory);
-        rabbitTemplate.setMessageConverter(producerJackson2MessageConverter());
-        return rabbitTemplate;
-    }
-
-    @Bean
-    public Jackson2JsonMessageConverter producerJackson2MessageConverter() {
-        return new Jackson2JsonMessageConverter();
+    SimpleRabbitListenerContainerFactory rabbitListenerContainerlistenerFactory(){
+        SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
+        factory.setConnectionFactory(connectionFactory());
+        return factory;
     }
 
 }
