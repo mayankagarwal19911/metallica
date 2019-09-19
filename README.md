@@ -1,5 +1,5 @@
-# metallica
-This Git Repo holds microservices for trade application
+# Metallica
+This application holds microservices for trade application
 
 This is the POC named as Metallica that comprises of multiple 
 microservices each independent of each other
