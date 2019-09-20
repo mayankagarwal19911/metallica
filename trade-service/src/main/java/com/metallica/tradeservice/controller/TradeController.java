@@ -1,6 +1,7 @@
 package com.metallica.tradeservice.controller;
 
 import com.metallica.tradeservice.common.MetallicaTradeConstants;
+import com.metallica.tradeservice.exception.PriceNotFoundException;
 import com.metallica.tradeservice.model.Price;
 import com.metallica.tradeservice.model.Trade;
 import com.metallica.tradeservice.rabbitmq.TradeStatus;
@@ -11,7 +12,6 @@ import org.springframework.amqp.core.AmqpTemplate;
 import org.springframework.amqp.rabbit.annotation.RabbitHandler;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.core.env.Environment;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -61,12 +61,24 @@ class TradeController {
                 env.getProperty ( "service.market-data-service.get-price" )+"/"+
                 trade.getCommodity (), Price.class );
 
-        loggerFactory.info ( " Commodity details : "+commodity );
-        trade.setTradeStatus ( MetallicaTradeConstants.TRADE_STATUS );
-        trade.setPrice ( commodity.getPrice () );
-        Trade savedTrade = tradeService.save ( trade );
+        if(commodity == null){
+            throw new PriceNotFoundException ("Exception occured in {} "+this.getClass () +". " +
+                    "No commodity found {} "+trade.getCommodity ());
+        }
 
-        loggerFactory.info ( "Working with RabbitMQ {} in "+ this.getClass ().getName () );
+        loggerFactory.info ( "Commodity details : "+commodity );
+        trade.setTradeStatus ( MetallicaTradeConstants.TRADE_STATUS_INITIATED );
+        trade.setPrice ( commodity.getPrice () );
+        Trade savedTrade = null;
+        try {
+            savedTrade = saveTrade();
+        }
+        catch(Exception ex){
+            loggerFactory.info ( "Error in saving trade to DB {} -> "+ex );
+        }
+        loggerFactory.info ( "Trade saved successfully to DB "+savedTrade );
+
+        loggerFactory.info ( "Sending trade to Queue {} in "+ this.getClass ().getName () );
         sendDataToQueue(savedTrade);
 
         // getting URI of trade
@@ -78,18 +90,35 @@ class TradeController {
 
 
     @PutMapping("/update")
-    public void updateTradeStatus(@RequestBody TradeStatus tradeStatus){
-        loggerFactory.info ( "Updating {} "+tradeStatus+" to DB in Trade Service" );
-        tradeService.findById ( tradeStatus.getId () );
-        trade.setTradeStatus ( tradeStatus.getTradeStatus () );
-        tradeService.save ( trade );
+    public void updateTradeStatus(@RequestBody TradeStatus _tradeStatus){
+        loggerFactory.info ( "Updating {} "+_tradeStatus+" to DB in Trade Service" );
+        Long id = null;
+        String tradeStatus = null;
+        try {
+            id = _tradeStatus.getId ( );
+            tradeStatus = _tradeStatus.getTradeStatus ( );
+            tradeService.updateTradeStatus (id , tradeStatus );
+        }
+        catch(Exception ex){
+            loggerFactory.info ( "Error while updating trade status {} "+tradeStatus +". Pushing this trade to pending status." );
+        }
+    }
+
+    private Trade saveTrade(){
+       return tradeService.save ( trade );
     }
 
     private void sendDataToQueue( Trade savedTrade){
-        TradeStatus tradeStatus = new TradeStatus (  );
-        tradeStatus.setId (savedTrade.getId ());
-        tradeStatus.setTradeStatus ( savedTrade.getTradeStatus () );
-        amqpTemplate.convertAndSend ( exchange, routingKey, tradeStatus);
+        if(null != savedTrade){
+            TradeStatus tradeStatus = new TradeStatus (  );
+            tradeStatus.setId (savedTrade.getId ());
+            tradeStatus.setTradeStatus ( savedTrade.getTradeStatus () );
+            try {
+                amqpTemplate.convertAndSend ( exchange , routingKey , tradeStatus );
+            }catch(Exception exception){
+                loggerFactory.info ( "Exception occurred while sending Data to Queue {} -> "+exception );
+            }
+        }
     }
 
     private
