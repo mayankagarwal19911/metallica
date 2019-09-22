@@ -21,3 +21,9 @@ eureka-server =  each service registers itself with this server to communicate.
 spring-cloud-config-server = Config server to read configuration from centralised repository for multiple environments.
 
 
+Ports :
+        Zuul - 8765
+        Eureka - 8761
+        MDS - 8091
+        Trade Service - 8080
+        Notification Service - 8764
