@@ -8,8 +8,9 @@ import com.metallica.tradeservice.rabbitmq.TradeStatus;
 import com.metallica.tradeservice.service.ITrade;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.amqp.core.AmqpTemplate;
 import org.springframework.amqp.rabbit.annotation.RabbitHandler;
+import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.env.Environment;
@@ -43,7 +44,7 @@ class TradeController {
     RestTemplate restTemplate;
 
     @Autowired
-    private AmqpTemplate amqpTemplate;
+    private RabbitTemplate rabbitTemplate;
 
     @Autowired
     private Environment env;
@@ -52,6 +53,9 @@ class TradeController {
 
     @RabbitHandler
     @PostMapping("/buy")
+//    @Retryable(
+//            value = {PriceNotFoundException.class, Exception.class},
+//            maxAttempts = 4, backoff = @Backoff(2000))
     public
     ResponseEntity<Object> buyTrade(@RequestBody Trade trade){
         this.trade = trade;
@@ -108,13 +112,14 @@ class TradeController {
        return tradeService.save ( trade );
     }
 
+    @RabbitListener(queues = "${rabbitmq.queue-name}")
     private void sendDataToQueue( Trade savedTrade){
         if(null != savedTrade){
             TradeStatus tradeStatus = new TradeStatus (  );
             tradeStatus.setId (savedTrade.getId ());
             tradeStatus.setTradeStatus ( savedTrade.getTradeStatus () );
             try {
-                amqpTemplate.convertAndSend ( exchange , routingKey , tradeStatus );
+                rabbitTemplate.convertAndSend ( exchange , routingKey , tradeStatus );
             }catch(Exception exception){
                 loggerFactory.info ( "Exception occurred while sending Data to Queue {} -> "+exception );
             }

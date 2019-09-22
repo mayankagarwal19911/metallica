@@ -29,7 +29,13 @@ class MarketDataService {
     public
     Price getPrices(@PathVariable String commodity){
         loggerFactory.info ( "Getting price for "+commodity );
-        return marketDatService.findByCommodity (commodity);
+        try {
+            return marketDatService.findByCommodity ( commodity );
+        }catch (Exception ex){
+            loggerFactory.info ( "Exception occurred in "+this.getClass ().getName () +" " +
+                    "while getting price for {} "+commodity +" : "+ex);
+        }
+        return null;
     }
 
 }

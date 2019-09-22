@@ -11,7 +11,6 @@ import org.springframework.stereotype.Component;
 
 import java.io.Serializable;
 
-@EnableRabbit
 @Component
 public
 class TradeMessageListener implements Serializable {
@@ -32,14 +31,4 @@ class TradeMessageListener implements Serializable {
         req.setTradeStatus ( trade.getTradeStatus () );
         tradeServiceClient.updateTrade(req);
     }
-//
-//    @RabbitListener(queues="${rabbitmq.queue-name}")
-//    public void receivedMessage(TradeStatus message) {
-//        loggerFactory.info ("******************Received trade is: {}", message);
-//    }
-
-//    @RabbitListener(queues="${rabbitmq.queue-name}")
-//    public void receivedMessage(TradeStatus msg) {
-//        System.out.println("Received Message: " + msg);
-//    }
 }
